@@ -39,6 +39,7 @@
             button3 = new Button();
             textBox4 = new TextBox();
             folderBrowserDialog1 = new FolderBrowserDialog();
+            progressBar1 = new ProgressBar();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             SuspendLayout();
             // 
@@ -124,11 +125,22 @@
             textBox4.Size = new Size(356, 23);
             textBox4.TabIndex = 7;
             // 
+            // progressBar1
+            // 
+            progressBar1.BackColor = SystemColors.Control;
+            progressBar1.Location = new Point(510, 147);
+            progressBar1.Name = "progressBar1";
+            progressBar1.Size = new Size(132, 17);
+            progressBar1.Step = 1;
+            progressBar1.Style = ProgressBarStyle.Continuous;
+            progressBar1.TabIndex = 8;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(654, 308);
+            Controls.Add(progressBar1);
             Controls.Add(textBox4);
             Controls.Add(button3);
             Controls.Add(pictureBox1);
@@ -156,5 +168,6 @@
         private Button button3;
         private TextBox textBox4;
         private FolderBrowserDialog folderBrowserDialog1;
+        private ProgressBar progressBar1;
     }
 }

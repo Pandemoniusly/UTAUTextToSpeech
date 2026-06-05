@@ -1,17 +1,6 @@
-using NAudio.Wave;
-using OpenUtau.Classic;
-using OpenUtau.Core.Format;
-using OpenUtau.Core.Render;
-using OpenUtau.Core.SignalChain;
-using OpenUtau.Core.Ustx;
-using OpenUtau.Core.Util;
-using SharpCompress.Common;
 using System.Diagnostics;
-using System.IO.Compression;
 using System.Media;
-using System.Resources;
 using System.Text;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace utautexttospeech
 {
@@ -20,31 +9,62 @@ namespace utautexttospeech
 
         public string FilePathh = "C:/";
         public string CachePath = "C:/";
-        public Process UtauRunning;
+        public static Process UtauRunning;
+        public static ProgressBar progress;
+        public static TextBox textbox;
         public Form1()
         {
             InitializeComponent();
+            progress = progressBar1;
+            textbox = textBox2;
             this.FormClosed += new FormClosedEventHandler(Form1_FormClosed);
         }
-        public static async Task<bool> RenderDoneAsync(DirectoryInfo directory,string cache)
+        public static async Task<bool> RenderDoneAsync(DirectoryInfo directory, string cache)
         {
-            using var cts = new CancellationTokenSource(20000);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(100));
+            int SecondCount = 0;
             Thread.Sleep(200);
+            progress.Value = 0;
             while (!cts.Token.IsCancellationRequested)
             {
                 foreach (FileInfo file in directory.GetFiles())
                 {
                     if (file.Exists & file.FullName != Path.Combine(cache, "UTAU_TTS_OUTPUT.wav"))
                     {
-                        File.Copy(file.FullName, Path.Combine(cache, "UTAU_TTS_OUTPUT.wav"));
-                        SoundPlayer yippee = new SoundPlayer(Properties.Resources.fast);
-                        yippee.Play();
-                        return true;
+                        try
+                        {
+                            File.Copy(file.FullName, Path.Combine(cache, "UTAU_TTS_OUTPUT.wav"));
+                            SoundPlayer yippee = new SoundPlayer(Properties.Resources.fast);
+                            yippee.Play();
+                            progress.Value = 100;
+                            if (UtauRunning != null)
+                            {
+                                UtauRunning.Kill();
+                            }
+                            return true;
+                        }
+                        catch
+                        {
+                            textbox.Text = "utau tts exists";
+                            SoundPlayer EVILERROR = new SoundPlayer(Properties.Resources.RAHH);
+                            EVILERROR.Play();
+                            if (UtauRunning != null)
+                            {
+                                UtauRunning.Kill();
+                            }
+                            return false;
+                        }
                     }
                 }
                 try
                 {
                     await Task.Delay(200, cts.Token);
+                    SecondCount += 1;
+                    if (SecondCount == 5)
+                    {
+                        progress.Value += 1;
+                        SecondCount = 0;
+                    }
                 }
                 catch (TaskCanceledException)
                 {
@@ -53,6 +73,11 @@ namespace utautexttospeech
             }
             SoundPlayer waghhh = new SoundPlayer(Properties.Resources.tooslow);
             waghhh.Play();
+            progress.Value = 100;
+            if (UtauRunning != null)
+            {
+                UtauRunning.Kill();
+            }
             return false;
         }
         public static async Task<bool> FileDoneAsync(string path)
@@ -111,6 +136,7 @@ namespace utautexttospeech
                 // Display the path in your TextBox (if you added one)
                 if (!FilePathh.EndsWith(".ustx"))
                 {
+                    textbox.Text = "not .ustx";
                     SoundPlayer EVILERROR = new SoundPlayer(Properties.Resources.RAHH);
                     EVILERROR.Play();
                     FilePathh = "C:/";
@@ -121,12 +147,31 @@ namespace utautexttospeech
         private async void button1_Click(object sender, EventArgs e)
         {
             string enteredText = textBox2.Text;
+
             if (enteredText == "")
             {
+                textbox.Text = "THERES NO TEXT";
                 SoundPlayer EVILERROR = new SoundPlayer(Properties.Resources.RAHH);
                 EVILERROR.Play();
                 return;
             }
+            else if (FilePathh == "C:/" || FilePathh == "")
+            {
+                textbox.Text = "THERES NO USTX";
+                SoundPlayer EVILERROR = new SoundPlayer(Properties.Resources.RAHH);
+                EVILERROR.Play();
+                return;
+            }
+            else if (CachePath == "C:/" || CachePath == "")
+            {
+                textbox.Text = "THERES NO CACHE";
+                SoundPlayer EVILERROR = new SoundPlayer(Properties.Resources.RAHH);
+                EVILERROR.Play();
+                return;
+            }
+            enteredText = enteredText.Replace(",", ",R,");
+            enteredText = enteredText.Replace(".", ",R,R,");
+
             // Load the OpenUtau project file
 
             string[] lines = File.ReadAllLines(FilePathh);
@@ -139,10 +184,10 @@ namespace utautexttospeech
                 }
                 else if (lines[i].StartsWith("    duration: "))
                 {
-                    newLines[i] = "    duration: " + enteredText.Length*70;
+                    newLines[i] = "    duration: " + enteredText.Replace(",R,", string.Empty).Length * 70;
                 }
             }
-            File.WriteAllLines(FilePathh, newLines,Encoding.UTF8);
+            File.WriteAllLines(FilePathh, newLines, Encoding.UTF8);
             DirectoryInfo directory = new DirectoryInfo(CachePath);
 
             // Delete all files inside the folder
@@ -165,26 +210,8 @@ namespace utautexttospeech
                 };
 
                 UtauRunning = Process.Start(startInfo);
-                await RenderDoneAsync(directory,CachePath);
+                await RenderDoneAsync(directory, CachePath);
             }
-            /*{
-                UProject project = OpenUtau.Core.Yaml.DefaultDeserializer.Deserialize<UProject>(File.ReadAllText(FilePathh, Encoding.UTF8));
-                string file = "";
-                var cts = new CancellationTokenSource(30000);
-                RenderEngine engine = new RenderEngine(project);
-                var trackMixes = engine.RenderTracks(OpenUtau.Core.DocManager.Inst.MainScheduler, ref cts);
-                file = OpenUtau.Core.PathManager.Inst.GetExportPath(ExportPath, project.tracks[0]);
-                WaveFileWriter.CreateWaveFile16(file, new ExportAdapter(trackMixes[0]).ToMono(1, 0));
-                SoundPlayer EVILERROR = new SoundPlayer(Properties.Resources.RAHH);
-                EVILERROR.Play();
-                return;
-            }
-            else
-            {
-                textBox2.Text = "Failed to update text within 2 seconds";
-                SoundPlayer EVILERROR = new SoundPlayer(Properties.Resources.RAHH);
-                EVILERROR.Play();
-            }*/
         }
 
         private void button3_Click(object sender, EventArgs e)
@@ -193,7 +220,13 @@ namespace utautexttospeech
             {
                 // Get the full path of the selected file
                 CachePath = folderBrowserDialog1.SelectedPath;
-
+                if (!CachePath.EndsWith("Cache"))
+                {
+                    textbox.Text = "doesnt end with cache";
+                    SoundPlayer EVILERROR = new SoundPlayer(Properties.Resources.RAHH);
+                    EVILERROR.Play();
+                    FilePathh = "C:/";
+                }
                 // Display the path in your TextBox (if you added one)
                 textBox4.Text = Path.Combine(CachePath, "UTAU_TTS_OUTPUT.wav");
             }
